@@ -16,12 +16,15 @@ public class InputHandler : MonoBehaviour
 {
     [SerializeField] private Vector3 StartPose;
     [SerializeField] private Vector3 EndPose;
+    [SerializeField] private float GaugeTime;
     [SerializeField] private float GaugeValue;
 
     [SerializeField, Space(10), MinMaxSlider(0, 10)]
     private Vector2 ForceRange = new Vector2(2, 5);
 
     public InputPhase InputPhase;
+    public UnityEvent<float> onSliderUpdate;
+
     public UnityEvent<Vector3> OnSetUp;
     public UnityEvent<Vector3> OnAim;
     public UnityEvent<float> OnLaunch;
@@ -36,6 +39,8 @@ public class InputHandler : MonoBehaviour
 
     void Update()
     {
+        if (Utilities_UI.IsOverUI()) return;
+
         switch (InputPhase)
         {
             case InputPhase.First:
@@ -63,11 +68,11 @@ public class InputHandler : MonoBehaviour
                     break;
                 case TouchPhase.Moved:
                     EndPose = EndPlane.GetMouseHitPos();
-                    OnAim.Invoke(EndPose);
+                    OnAim.Invoke(EndPose - StartPose);
                     break;
                 case TouchPhase.Ended:
                     EndPose = EndPlane.GetMouseHitPos();
-                    OnAim.Invoke(EndPose);
+                    OnAim.Invoke(EndPose -StartPose);
                     InputPhase++;
                     break;
                 default:
@@ -90,10 +95,23 @@ public class InputHandler : MonoBehaviour
         }
         else
         {
-            GaugeValue += Time.deltaTime;
-            GaugeValue %= 1;
+            GaugeTime += Time.deltaTime;
+
+            //Linear
+            //GaugeValue = GaugeTime%1;
+
+            //Triangle
+            GaugeValue = Mathf.Abs(2 * (GaugeTime - Mathf.Floor(GaugeTime+0.5f)));
+
+            onSliderUpdate?.Invoke(GaugeValue);
         }
 
+    }
+
+    public void GameReset()
+    {
+        InputPhase = InputPhase.First;
+        OnSetUp.Invoke(StartPose);
     }
 
     private void OnDrawGizmos()
